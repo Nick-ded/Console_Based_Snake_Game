@@ -1,0 +1,15 @@
+# Compiled output
+*.exe
+*.o
+*.obj
+
+# Score save file
+scores.dat
+
+# Build artifacts
+*.pdb
+*.ilk
+
+# VS / editor folders
+.vs/
+.vscode/
