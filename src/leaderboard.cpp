@@ -2,10 +2,7 @@
 #include <fstream>
 #include <algorithm>
 
-Leaderboard& Leaderboard::get() {
-    static Leaderboard inst;
-    return inst;
-}
+Leaderboard& Leaderboard::get() { static Leaderboard inst; return inst; }
 
 void Leaderboard::load() {
     m_entries.clear();

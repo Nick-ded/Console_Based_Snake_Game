@@ -1,18 +1,19 @@
 #include "console.h"
 #include <cstdlib>
-#include <cmath>
 
-Console& Console::get() {
-    static Console inst;
-    return inst;
-}
+Console& Console::get() { static Console inst; return inst; }
 
 void Console::init() {
     m_hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-    resize(m_cols, m_rows);
+    // Set buffer then window size
+    COORD bufSize = { (SHORT)m_cols, (SHORT)m_rows };
+    SetConsoleScreenBufferSize(m_hOut, bufSize);
+    SMALL_RECT wr = { 0, 0, (SHORT)(m_cols-1), (SHORT)(m_rows-1) };
+    SetConsoleWindowInfo(m_hOut, TRUE, &wr);
     hideCursor();
-    m_back.assign(m_cols * m_rows, Cell{});
-    m_front.assign(m_cols * m_rows, Cell{' ', 0xFFFF}); // force first flush
+    Cell blank{' ', C_BLACK};
+    m_back.assign(m_cols * m_rows, blank);
+    m_front.assign(m_cols * m_rows, Cell{' ', 0xFFFF});
 }
 
 void Console::hideCursor() {
@@ -20,18 +21,8 @@ void Console::hideCursor() {
     SetConsoleCursorInfo(m_hOut, &ci);
 }
 
-void Console::resize(int cols, int rows) {
-    m_cols = cols; m_rows = rows;
-    // Set buffer first, then window (avoids size conflicts)
-    COORD bufSize = { (SHORT)cols, (SHORT)rows };
-    SetConsoleScreenBufferSize(m_hOut, bufSize);
-    SMALL_RECT winRect = { 0, 0, (SHORT)(cols-1), (SHORT)(rows-1) };
-    SetConsoleWindowInfo(m_hOut, TRUE, &winRect);
-}
-
 void Console::put(int x, int y, char ch, WORD color) {
-    x += m_shakeX;
-    y += m_shakeY;
+    x += m_shakeX; y += m_shakeY;
     if (x < 0 || x >= m_cols || y < 0 || y >= m_rows) return;
     auto& cell = m_back[y * m_cols + x];
     cell.ch    = ch;
@@ -52,9 +43,7 @@ void Console::fill(int x, int y, int w, int h, char ch, WORD color) {
 void Console::flush() {
     for (int i = 0; i < m_cols * m_rows; i++) {
         if (m_back[i].ch != m_front[i].ch || m_back[i].color != m_front[i].color) {
-            int x = i % m_cols;
-            int y = i / m_cols;
-            rawPut(x, y, m_back[i].ch, m_back[i].color);
+            rawPut(i % m_cols, i / m_cols, m_back[i].ch, m_back[i].color);
             m_front[i] = m_back[i];
         }
     }
@@ -73,11 +62,10 @@ void Console::shake(int frames, int intensity) {
 void Console::tickShake() {
     if (m_shakeTicks > 0) {
         m_shakeTicks--;
-        m_shakeX = (rand() % (m_shakeIntensity * 2 + 1)) - m_shakeIntensity;
-        m_shakeY = (rand() % (m_shakeIntensity * 2 + 1)) - m_shakeIntensity;
+        m_shakeX = (rand() % (m_shakeIntensity*2+1)) - m_shakeIntensity;
+        m_shakeY = (rand() % (m_shakeIntensity*2+1)) - m_shakeIntensity;
     } else {
-        m_shakeX = 0;
-        m_shakeY = 0;
+        m_shakeX = 0; m_shakeY = 0;
     }
 }
 

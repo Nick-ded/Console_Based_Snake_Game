@@ -5,17 +5,13 @@
 #include <deque>
 #include <functional>
 
-// ═══════════════════════════════════════════════════════════════
-//  BOARD DIMENSIONS
-// ═══════════════════════════════════════════════════════════════
-constexpr int BOARD_W       = 40;   // playfield cells wide
-constexpr int BOARD_H       = 22;   // playfield cells tall
-constexpr int CONSOLE_COLS  = 100;
-constexpr int CONSOLE_ROWS  = 34;
+// Board dimensions
+constexpr int BOARD_W      = 40;
+constexpr int BOARD_H      = 22;
+constexpr int CONSOLE_COLS = 100;
+constexpr int CONSOLE_ROWS = 34;
 
-// ═══════════════════════════════════════════════════════════════
-//  COLORS  (Windows console palette indices)
-// ═══════════════════════════════════════════════════════════════
+// Windows console color palette indices
 enum Color : WORD {
     C_BLACK        = 0x00,
     C_DARK_BLUE    = 0x01,
@@ -33,7 +29,6 @@ enum Color : WORD {
     C_MAGENTA      = 0x0D,
     C_YELLOW       = 0x0E,
     C_WHITE        = 0x0F,
-    // backgrounds
     C_BG_BLUE      = 0x10,
     C_BG_GREEN     = 0x20,
     C_BG_RED       = 0x40,
@@ -44,14 +39,8 @@ enum Color : WORD {
     C_BG_BLACK     = 0x00,
 };
 
-// ═══════════════════════════════════════════════════════════════
-//  DIRECTION
-// ═══════════════════════════════════════════════════════════════
 enum Direction { DIR_UP, DIR_DOWN, DIR_LEFT, DIR_RIGHT };
 
-// ═══════════════════════════════════════════════════════════════
-//  GAME MODES
-// ═══════════════════════════════════════════════════════════════
 enum GameMode {
     MODE_CLASSIC = 0,
     MODE_PORTAL,
@@ -71,21 +60,18 @@ static const char* MODE_DESC[MODE_COUNT] = {
     "Everything is random. Expect the unexpected."
 };
 
-// ═══════════════════════════════════════════════════════════════
-//  POWER-UP TYPES
-// ═══════════════════════════════════════════════════════════════
 enum PowerUpType {
     PU_NONE = -1,
-    PU_SPEED_BOOST = 0,   // faster movement
-    PU_SLOW_MO,           // slow down time
-    PU_SHIELD,            // survive one collision
-    PU_GHOST,             // pass through self
-    PU_MAGNET,            // food attracted to head
-    PU_FREEZE,            // freeze enemies/obstacles
-    PU_BOMB,              // explode nearby walls
-    PU_DOUBLE_SCORE,      // 2× points
-    PU_SHRINK,            // shrink snake by 3
-    PU_STAR,              // invincible + bonus points
+    PU_SPEED_BOOST = 0,
+    PU_SLOW_MO,
+    PU_SHIELD,
+    PU_GHOST,
+    PU_MAGNET,
+    PU_FREEZE,
+    PU_BOMB,
+    PU_DOUBLE_SCORE,
+    PU_SHRINK,
+    PU_STAR,
     PU_COUNT
 };
 
@@ -101,9 +87,6 @@ static const Color PU_COLORS[PU_COUNT] = {
     C_DARK_CYAN, C_RED, C_YELLOW, C_DARK_MAGENTA, C_WHITE
 };
 
-// ═══════════════════════════════════════════════════════════════
-//  POINT
-// ═══════════════════════════════════════════════════════════════
 struct Point {
     int x, y;
     bool operator==(const Point& o) const { return x == o.x && y == o.y; }
@@ -111,43 +94,31 @@ struct Point {
     Point operator+(const Point& o) const { return {x+o.x, y+o.y}; }
 };
 
-// ═══════════════════════════════════════════════════════════════
-//  PARTICLE
-// ═══════════════════════════════════════════════════════════════
 struct Particle {
     float x, y;
     float vx, vy;
-    int   life;      // frames remaining
+    int   life;
     char  glyph;
     Color color;
 };
 
-// ═══════════════════════════════════════════════════════════════
-//  POWER-UP INSTANCE
-// ═══════════════════════════════════════════════════════════════
 struct PowerUp {
     Point       pos;
     PowerUpType type;
-    int         blinkTimer;   // for flashing animation
+    int         blinkTimer;
     bool        active;
 };
 
-// ═══════════════════════════════════════════════════════════════
-//  ENEMY  (roaming obstacle)
-// ═══════════════════════════════════════════════════════════════
 struct Enemy {
     Point     pos;
     Direction dir;
     int       moveTimer;
-    int       moveInterval;  // ticks between moves
+    int       moveInterval;
     bool      frozen;
     int       frozenTimer;
     Color     color;
 };
 
-// ═══════════════════════════════════════════════════════════════
-//  SCORE ENTRY
-// ═══════════════════════════════════════════════════════════════
 struct ScoreEntry {
     std::string name;
     int         score;
@@ -155,17 +126,14 @@ struct ScoreEntry {
     int         level;
 };
 
-// ═══════════════════════════════════════════════════════════════
-//  ACTIVE EFFECTS on the snake
-// ═══════════════════════════════════════════════════════════════
 struct ActiveEffects {
-    int  speedBoost    = 0;   // ticks remaining
-    int  slowMo        = 0;
-    int  shield        = 0;
-    int  ghost         = 0;
-    int  magnet        = 0;
-    int  freeze        = 0;
-    int  doubleScore   = 0;
-    int  star          = 0;
-    bool hasShield     = false;
+    int  speedBoost  = 0;
+    int  slowMo      = 0;
+    int  shield      = 0;
+    int  ghost       = 0;
+    int  magnet      = 0;
+    int  freeze      = 0;
+    int  doubleScore = 0;
+    int  star        = 0;
+    bool hasShield   = false;
 };

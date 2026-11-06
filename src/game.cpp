@@ -7,20 +7,16 @@
 #include <conio.h>
 #include <cstdlib>
 #include <cmath>
+#include <ctime>
 #include <algorithm>
-#include <sstream>
+#include <string>
+#include <functional>
 
-// ─────────────────────────────────────────────────────────────
-//  Singleton
-// ─────────────────────────────────────────────────────────────
-Game& Game::get() {
-    static Game inst;
-    return inst;
-}
+Game& Game::get() { static Game inst; return inst; }
 
-// ─────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------
 //  Helpers
-// ─────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------
 void Game::drawCell(int gx, int gy, char ch1, char ch2, WORD color) {
     Console::get().put(cx(gx),   cy(gy), ch1, color);
     Console::get().put(cx(gx)+1, cy(gy), ch2, color);
@@ -36,12 +32,11 @@ bool Game::isFree(const Point& p) const {
 }
 
 Point Game::randomFreeCell() const {
-    Point p;
-    int attempts = 0;
-    do {
+    Point p = {BOARD_W/2, BOARD_H/2};
+    for (int attempts = 0; attempts < 1000; attempts++) {
         p = { rand() % BOARD_W, rand() % BOARD_H };
-        attempts++;
-    } while (!isFree(p) && attempts < 1000);
+        if (isFree(p)) break;
+    }
     return p;
 }
 
@@ -65,7 +60,7 @@ Point Game::nextHead() const {
 }
 
 bool Game::collidesWall(const Point& p) const {
-    if (m_mode == MODE_PORTAL) return false; // walls wrap
+    if (m_mode == MODE_PORTAL) return false;
     if (p.x < 0 || p.x >= BOARD_W || p.y < 0 || p.y >= BOARD_H) return true;
     if (m_mode == MODE_MAZE || m_mode == MODE_CHAOS)
         return Maze::get().isWall(p);
@@ -79,52 +74,36 @@ bool Game::collidesSelf(const Point& p) const {
     return false;
 }
 
-bool Game::collidesEnemy(const Point& p) const {
-    if (m_fx.star > 0) return false;
-    for (auto& e : m_enemies)
-        if (e.pos == p) return true;
-    return false;
-}
-
 int Game::baseScore() const {
     return 10 * m_level * (m_fx.doubleScore > 0 ? 2 : 1);
 }
 
 int Game::effectiveSpeed() const {
     int s = m_tickSpeed;
-    if (m_fx.speedBoost > 0) s = std::max(40, s - 60);
-    if (m_fx.slowMo > 0)     s = std::min(400, s + 100);
-    if (m_fx.star > 0)       s = std::max(50, s - 40);
+    if (m_fx.speedBoost > 0) s = (std::max)(40, s - 60);
+    if (m_fx.slowMo > 0)     s = (std::min)(400, s + 100);
+    if (m_fx.star > 0)       s = (std::max)(50, s - 40);
     return s;
 }
 
-// ─────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------
 //  Init
-// ─────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------
 void Game::init(GameMode mode) {
-    m_mode      = mode;
-    m_snake.clear();
-    m_food.clear();
-    m_powerups.clear();
-    m_enemies.clear();
-    m_gameOver  = false;
-    m_paused    = false;
-    m_score     = 0;
-    m_level     = 1;
-    m_combo     = 0;
-    m_comboTimer= 0;
-    m_tickSpeed = 150;
-    m_fx        = {};
+    m_mode = mode;
+    m_snake.clear(); m_food.clear();
+    m_powerups.clear(); m_enemies.clear();
+    m_gameOver = false; m_paused = false;
+    m_score = 0; m_level = 1; m_combo = 0; m_comboTimer = 0;
+    m_tickSpeed = 150; m_fx = {};
     m_powerupSpawnTimer = 100;
     m_enemySpawnTimer   = 200;
     m_chaosEventTimer   = 80;
     Particles::get().clear();
 
-    // Generate maze/walls
     if (mode == MODE_MAZE) {
         Maze::get().generate();
     } else {
-        // Clear all walls
         for (int x = 0; x < BOARD_W; x++)
             for (int y = 0; y < BOARD_H; y++)
                 Maze::get().setWall(x, y, false);
@@ -133,21 +112,19 @@ void Game::init(GameMode mode) {
             Maze::get().addRandomWalls(30);
     }
 
-    // Snake starts in center facing right (3 segments)
-    int mx = BOARD_W / 2, my = BOARD_H / 2;
+    int mx = BOARD_W/2, my = BOARD_H/2;
     m_snake.push_back({mx,   my});
     m_snake.push_back({mx-1, my});
     m_snake.push_back({mx-2, my});
     m_dir = DIR_RIGHT; m_nextDir = DIR_RIGHT;
 
-    // Spawn initial food
     spawnFood();
-    if (mode == MODE_CHAOS) spawnFood(); // two food in chaos
+    if (mode == MODE_CHAOS) spawnFood();
 }
 
-// ─────────────────────────────────────────────────────────────
-//  Spawn functions
-// ─────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------
+//  Spawn
+// ---------------------------------------------------------------
 void Game::spawnFood() {
     if ((int)m_food.size() >= 3) return;
     m_food.push_back(randomFreeCell());
@@ -156,40 +133,35 @@ void Game::spawnFood() {
 void Game::spawnPowerup() {
     if ((int)m_powerups.size() >= 3) return;
     PowerUp pu;
-    pu.pos        = randomFreeCell();
-    pu.type       = (PowerUpType)(rand() % PU_COUNT);
-    pu.blinkTimer = 0;
-    pu.active     = true;
+    pu.pos = randomFreeCell();
+    pu.type = (PowerUpType)(rand() % PU_COUNT);
+    pu.blinkTimer = 0; pu.active = true;
     m_powerups.push_back(pu);
 }
 
 void Game::spawnEnemy() {
     if ((int)m_enemies.size() >= 4) return;
     Enemy e;
-    e.pos          = randomFreeCell();
-    e.dir          = (Direction)(rand() % 4);
-    e.moveTimer    = 0;
-    e.moveInterval = 4 + rand() % 6;  // moves every N game ticks
-    e.frozen       = false;
-    e.frozenTimer  = 0;
+    e.pos = randomFreeCell();
+    e.dir = (Direction)(rand() % 4);
+    e.moveTimer = 0; e.moveInterval = 4 + rand() % 6;
+    e.frozen = false; e.frozenTimer = 0;
     static const Color ecols[] = {C_RED, C_MAGENTA, C_DARK_RED, C_YELLOW};
-    e.color        = ecols[rand() % 4];
+    e.color = ecols[rand() % 4];
     m_enemies.push_back(e);
 }
 
-// ─────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------
 //  Collect events
-// ─────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------
 void Game::collectFood(int idx) {
     Point fp = m_food[idx];
     m_food.erase(m_food.begin() + idx);
-
-    m_comboTimer = 30; // ticks to keep combo alive
+    m_comboTimer = 30;
     m_combo++;
     int earned = baseScore() * (m_combo > 1 ? m_combo : 1);
     m_score += earned;
 
-    // Floating score text
     std::string txt = "+" + std::to_string(earned);
     if (m_combo > 1) txt += " x" + std::to_string(m_combo);
     Particles::get().text((float)fp.x, (float)fp.y - 0.5f, txt,
@@ -199,16 +171,14 @@ void Game::collectFood(int idx) {
     if (m_combo >= 3) Sound::get().play(SND_COMBO);
     else              Sound::get().play(SND_EAT);
 
-    // Level up
     int newLevel = m_score / 150 + 1;
     if (newLevel > m_level) {
         m_level = newLevel;
-        m_tickSpeed = std::max(55, 150 - (m_level-1)*12);
+        m_tickSpeed = (std::max)(55, 150 - (m_level-1)*12);
         Sound::get().play(SND_LEVEL_UP);
         Particles::get().text((float)BOARD_W/2, (float)BOARD_H/2,
                               "LEVEL " + std::to_string(m_level) + "!", C_YELLOW);
     }
-
     spawnFood();
 }
 
@@ -221,35 +191,30 @@ void Game::collectPowerup(int idx) {
     Particles::get().burst((float)pos.x, (float)pos.y, 15, PU_COLORS[type], PU_GLYPHS[type]);
     Particles::get().text((float)pos.x, (float)pos.y - 1, PU_NAMES[type], PU_COLORS[type]);
 
-    int dur = 60 + m_level * 5; // ticks the effect lasts
-
+    int dur = 60 + m_level * 5;
     switch (type) {
-        case PU_SPEED_BOOST:  m_fx.speedBoost  = dur;  break;
-        case PU_SLOW_MO:      m_fx.slowMo      = dur;  break;
-        case PU_SHIELD:       m_fx.shield      = dur; m_fx.hasShield = true; break;
-        case PU_GHOST:        m_fx.ghost       = dur;  break;
-        case PU_MAGNET:       m_fx.magnet      = dur;  break;
-        case PU_FREEZE:       m_fx.freeze      = dur;
-                              for (auto& e : m_enemies) { e.frozen = true; e.frozenTimer = dur; }
-                              break;
-        case PU_DOUBLE_SCORE: m_fx.doubleScore = dur;  break;
-        case PU_STAR:         m_fx.star        = dur;
-                              Sound::get().play(SND_STAR); break;
+        case PU_SPEED_BOOST:  m_fx.speedBoost  = dur; break;
+        case PU_SLOW_MO:      m_fx.slowMo      = dur; break;
+        case PU_SHIELD:       m_fx.shield = dur; m_fx.hasShield = true; break;
+        case PU_GHOST:        m_fx.ghost       = dur; break;
+        case PU_MAGNET:       m_fx.magnet      = dur; break;
+        case PU_FREEZE:
+            m_fx.freeze = dur;
+            for (auto& e : m_enemies) { e.frozen = true; e.frozenTimer = dur; }
+            break;
+        case PU_DOUBLE_SCORE: m_fx.doubleScore = dur; break;
+        case PU_STAR:         m_fx.star = dur; Sound::get().play(SND_STAR); break;
         case PU_SHRINK:
-            // Shrink snake by 4 segments (minimum 3)
             for (int i = 0; i < 4 && (int)m_snake.size() > 3; i++)
                 m_snake.pop_back();
             break;
-        case PU_BOMB:
-            triggerBomb();
-            break;
+        case PU_BOMB: triggerBomb(); break;
         default: break;
     }
 }
 
 void Game::hitEnemy(int idx) {
     if (m_fx.star > 0) {
-        // Star mode: destroy enemy
         Particles::get().explosion((float)m_enemies[idx].pos.x,
                                    (float)m_enemies[idx].pos.y, 20);
         m_score += 50 * m_level;
@@ -274,7 +239,6 @@ void Game::triggerBomb() {
     Particles::get().explosion((float)h.x, (float)h.y, 40);
     Console::get().shake(10, 3);
     Sound::get().play(SND_BOMB);
-    // Also kill nearby enemies
     for (int i = (int)m_enemies.size()-1; i >= 0; i--) {
         int dx = m_enemies[i].pos.x - h.x;
         int dy = m_enemies[i].pos.y - h.y;
@@ -295,64 +259,46 @@ void Game::triggerDeath() {
         Particles::get().burst((float)s.x, (float)s.y, 3, C_RED, 'X');
 }
 
-// ─────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------
 //  Update sub-systems
-// ─────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------
 void Game::updateEffects() {
-    auto tick = [](int& v) { if (v > 0) v--; };
-    tick(m_fx.speedBoost);
-    tick(m_fx.slowMo);
-    tick(m_fx.shield);
-    tick(m_fx.ghost);
-    tick(m_fx.magnet);
-    tick(m_fx.freeze);
-    tick(m_fx.doubleScore);
-    tick(m_fx.star);
+    auto tick = [](int& v){ if (v > 0) v--; };
+    tick(m_fx.speedBoost); tick(m_fx.slowMo);  tick(m_fx.shield);
+    tick(m_fx.ghost);      tick(m_fx.magnet);  tick(m_fx.freeze);
+    tick(m_fx.doubleScore);tick(m_fx.star);
     if (m_fx.shield == 0) m_fx.hasShield = false;
 }
 
 void Game::updateCombo() {
-    if (m_comboTimer > 0) {
-        m_comboTimer--;
-        if (m_comboTimer == 0) m_combo = 0;
-    }
+    if (m_comboTimer > 0) { m_comboTimer--; if (m_comboTimer == 0) m_combo = 0; }
 }
 
 void Game::updateMagnet() {
     if (m_fx.magnet <= 0) return;
-    // Pull each food 1 step toward snake head per tick
     Point h = m_snake.front();
     for (auto& f : m_food) {
-        if (abs(f.x - h.x) > 1 || abs(f.y - h.y) > 1) {
-            Point nf = f;
-            if (f.x < h.x) nf.x++;
-            else if (f.x > h.x) nf.x--;
-            if (f.y < h.y) nf.y++;
-            else if (f.y > h.y) nf.y--;
-            // Don't move onto snake or wall
-            if (isFree(nf)) f = nf;
-        }
+        Point nf = f;
+        if (f.x < h.x) nf.x++;
+        else if (f.x > h.x) nf.x--;
+        if (f.y < h.y) nf.y++;
+        else if (f.y > h.y) nf.y--;
+        if (isFree(nf)) f = nf;
     }
 }
 
 void Game::updateEnemies() {
     for (auto& e : m_enemies) {
         if (e.frozen) {
-            if (e.frozenTimer > 0) e.frozenTimer--;
-            else { e.frozen = false; }
+            if (e.frozenTimer > 0) e.frozenTimer--; else e.frozen = false;
             continue;
         }
-
         e.moveTimer++;
         if (e.moveTimer < e.moveInterval) continue;
         e.moveTimer = 0;
-
-        // Simple AI: 70% of the time chase snake, 30% random
         Point target = m_snake.front();
         bool chase = (rand() % 10) < 7;
-
         if (chase) {
-            // Move one step toward head
             int dx = target.x - e.pos.x;
             int dy = target.y - e.pos.y;
             Point np = e.pos;
@@ -362,7 +308,6 @@ void Game::updateEnemies() {
                 np.y >= 0 && np.y < BOARD_H)
                 e.pos = np;
         } else {
-            // Random move
             const int ddx[] = {0,0,-1,1};
             const int ddy[] = {-1,1,0,0};
             int d = rand() % 4;
@@ -375,55 +320,53 @@ void Game::updateEnemies() {
 }
 
 void Game::triggerChaosEvent() {
-    // Random wild events in CHAOS mode
     int ev = rand() % 8;
     switch (ev) {
-        case 0: // Reverse direction
-            if (m_dir == DIR_UP)    m_dir = DIR_DOWN;
+        case 0:
+            if (m_dir == DIR_UP)         m_dir = DIR_DOWN;
             else if (m_dir == DIR_DOWN)  m_dir = DIR_UP;
             else if (m_dir == DIR_LEFT)  m_dir = DIR_RIGHT;
             else                         m_dir = DIR_LEFT;
             m_nextDir = m_dir;
             Particles::get().text((float)BOARD_W/2, 2, "REVERSED!", C_RED);
             break;
-        case 1: // Speed surge
+        case 1:
             m_fx.speedBoost = 30;
             Particles::get().text((float)BOARD_W/2, 2, "SPEED SURGE!", C_YELLOW);
             break;
-        case 2: // Add walls
+        case 2:
             Maze::get().addRandomWalls(5);
             Particles::get().text((float)BOARD_W/2, 2, "WALLS!", C_DARK_RED);
             break;
-        case 3: // Bonus food
+        case 3:
             spawnFood(); spawnFood();
             Particles::get().text((float)BOARD_W/2, 2, "BONUS FOOD!", C_GREEN);
             break;
-        case 4: // Teleport snake head
-        {
+        case 4: {
             Point np = randomFreeCell();
             m_snake.front() = np;
             Particles::get().text((float)BOARD_W/2, 2, "TELEPORT!", C_CYAN);
             Sound::get().play(SND_PORTAL);
             break;
         }
-        case 5: // Spawn extra enemy
+        case 5:
             spawnEnemy();
             Particles::get().text((float)BOARD_W/2, 2, "ENEMY!", C_RED);
             break;
-        case 6: // Double score
+        case 6:
             m_fx.doubleScore = 40;
             Particles::get().text((float)BOARD_W/2, 2, "2X SCORE!", C_YELLOW);
             break;
-        case 7: // Slow mo
+        case 7:
             m_fx.slowMo = 40;
             Particles::get().text((float)BOARD_W/2, 2, "SLOW-MO!", C_CYAN);
             break;
     }
 }
 
-// ─────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------
 //  Input
-// ─────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------
 void Game::handleInput() {
     if (!_kbhit()) return;
     int key = _getch();
@@ -447,24 +390,20 @@ void Game::handleInput() {
     }
 }
 
-// ─────────────────────────────────────────────────────────────
-//  Main update tick
-// ─────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------
+//  Main update
+// ---------------------------------------------------------------
 void Game::update() {
     m_dir = m_nextDir;
-
-    // Timers
     updateEffects();
     updateCombo();
 
-    // Power-up spawn
     m_powerupSpawnTimer--;
     if (m_powerupSpawnTimer <= 0) {
         spawnPowerup();
         m_powerupSpawnTimer = 80 + rand() % 60;
     }
 
-    // Enemy spawn (not classic mode)
     if (m_mode != MODE_CLASSIC) {
         m_enemySpawnTimer--;
         if (m_enemySpawnTimer <= 0) {
@@ -474,7 +413,6 @@ void Game::update() {
         updateEnemies();
     }
 
-    // Chaos events
     if (m_mode == MODE_CHAOS) {
         m_chaosEventTimer--;
         if (m_chaosEventTimer <= 0) {
@@ -483,26 +421,18 @@ void Game::update() {
         }
     }
 
-    // Magnet effect
     updateMagnet();
-
-    // Power-up blink timers
     for (auto& pu : m_powerups) pu.blinkTimer++;
 
-    // ── Move snake ──────────────────────────────────────────────
     Point head = nextHead();
-
-    // Portal wrap
     if (m_mode == MODE_PORTAL) head = wrapPoint(head);
 
-    // Collision checks
     if (collidesWall(head)) {
         if (m_fx.hasShield) {
             m_fx.hasShield = false; m_fx.shield = 0;
             Sound::get().play(SND_SHIELD_HIT);
             Console::get().shake(5, 2);
-            // Bounce: reverse direction
-            if (m_dir == DIR_UP)   m_nextDir = DIR_DOWN;
+            if (m_dir == DIR_UP)         m_nextDir = DIR_DOWN;
             else if (m_dir == DIR_DOWN)  m_nextDir = DIR_UP;
             else if (m_dir == DIR_LEFT)  m_nextDir = DIR_RIGHT;
             else                         m_nextDir = DIR_LEFT;
@@ -512,60 +442,52 @@ void Game::update() {
     }
     if (collidesSelf(head)) { triggerDeath(); return; }
 
-    // Check enemy collision before push
     for (int i = 0; i < (int)m_enemies.size(); i++) {
-        if (m_enemies[i].pos == head) { hitEnemy(i); if (m_gameOver) return; break; }
+        if (m_enemies[i].pos == head) {
+            hitEnemy(i);
+            if (m_gameOver) return;
+            break;
+        }
     }
 
     m_snake.push_front(head);
 
-    // Check food
     bool ate = false;
     for (int i = 0; i < (int)m_food.size(); i++) {
         if (m_food[i] == head) { collectFood(i); ate = true; break; }
     }
+    if (!ate) m_snake.pop_back();
 
-    if (!ate) m_snake.pop_back(); // normal move
-
-    // Check powerup
     for (int i = 0; i < (int)m_powerups.size(); i++) {
         if (m_powerups[i].pos == head) { collectPowerup(i); break; }
     }
 
-    // Star mode: sparkle trail
     if (m_fx.star > 0)
         Particles::get().trail((float)m_snake.back().x,
                                (float)m_snake.back().y, C_YELLOW);
 }
 
-// ─────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------
 //  Draw
-// ─────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------
 void Game::drawBoard() {
     auto& con = Console::get();
-
-    // Border
-    // Top/bottom
-    for (int x = 0; x <= BOARD_W * 2 + 1; x++) {
-        con.put(x, 1,           '-', C_DARK_CYAN);
-        con.put(x, BOARD_H + 2, '-', C_DARK_CYAN);
+    for (int x = 0; x <= BOARD_W*2+1; x++) {
+        con.put(x, 1,          '-', C_DARK_CYAN);
+        con.put(x, BOARD_H+2,  '-', C_DARK_CYAN);
     }
-    // Left/right
-    for (int y = 1; y <= BOARD_H + 2; y++) {
-        con.put(0,             y, '|', C_DARK_CYAN);
+    for (int y = 1; y <= BOARD_H+2; y++) {
+        con.put(0,            y, '|', C_DARK_CYAN);
         con.put(BOARD_W*2+1,  y, '|', C_DARK_CYAN);
     }
-    // Corners
-    con.put(0,            1,           '+', C_CYAN);
-    con.put(BOARD_W*2+1,  1,           '+', C_CYAN);
-    con.put(0,            BOARD_H+2,   '+', C_CYAN);
-    con.put(BOARD_W*2+1,  BOARD_H+2,   '+', C_CYAN);
+    con.put(0,           1,          '+', C_CYAN);
+    con.put(BOARD_W*2+1, 1,          '+', C_CYAN);
+    con.put(0,           BOARD_H+2,  '+', C_CYAN);
+    con.put(BOARD_W*2+1, BOARD_H+2,  '+', C_CYAN);
 
-    // Mode badge in top-left corner of border
     std::string badge = std::string(" ") + MODE_NAMES[m_mode] + " ";
-    con.print(2, 1, badge, C_YELLOW | C_BG_BLACK);
+    con.print(2, 1, badge, C_YELLOW);
 
-    // Maze walls
     if (m_mode == MODE_MAZE || m_mode == MODE_CHAOS) {
         for (auto& w : Maze::get().walls())
             drawCell(w.x, w.y, '#', '#', C_DARK_YELLOW);
@@ -579,34 +501,30 @@ void Game::drawSnake() {
     WORD bodyColor = C_DARK_GREEN;
 
     if (m_fx.star > 0) {
-        // Rainbow cycling
-        static int rainbowTick = 0; rainbowTick++;
-        static const WORD rcols[] = {C_RED,C_YELLOW,C_GREEN,C_CYAN,C_BLUE,C_MAGENTA,C_WHITE};
-        headColor = rcols[(rainbowTick/3) % 7];
-        bodyColor = rcols[(rainbowTick/3 + 2) % 7];
+        static int rt = 0; rt++;
+        static const WORD rc[] = {C_RED,C_YELLOW,C_GREEN,C_CYAN,C_BLUE,C_MAGENTA,C_WHITE};
+        headColor = rc[(rt/3) % 7];
+        bodyColor = rc[(rt/3 + 2) % 7];
     } else if (m_fx.ghost > 0) {
         headColor = C_MAGENTA; bodyColor = C_DARK_MAGENTA;
-    } else if (m_fx.shield > 0 || m_fx.hasShield) {
+    } else if (m_fx.hasShield) {
         headColor = C_CYAN; bodyColor = C_DARK_CYAN;
     } else if (m_fx.speedBoost > 0) {
         headColor = C_YELLOW; bodyColor = C_DARK_YELLOW;
     }
 
-    // Draw body first (back to front, so head is on top)
     for (int i = (int)m_snake.size()-1; i >= 1; i--)
         drawCell(m_snake[i].x, m_snake[i].y, '(', ')', bodyColor);
 
-    // Head – direction-based glyph
-    const char* headGlyph = "[]";
+    const char* hg = "[]";
     switch (m_dir) {
-        case DIR_UP:    headGlyph = "/\\"; break;
-        case DIR_DOWN:  headGlyph = "\\/"; break;
-        case DIR_LEFT:  headGlyph = "<]"; break;
-        case DIR_RIGHT: headGlyph = "[>"; break;
+        case DIR_UP:    hg = "/\\"; break;
+        case DIR_DOWN:  hg = "\\/"; break;
+        case DIR_LEFT:  hg = "<]";  break;
+        case DIR_RIGHT: hg = "[>";  break;
     }
-    drawCell(m_snake.front().x, m_snake.front().y, headGlyph[0], headGlyph[1], headColor);
+    drawCell(m_snake.front().x, m_snake.front().y, hg[0], hg[1], headColor);
 
-    // Shield aura – draw a frame around head
     if (m_fx.hasShield) {
         Point h = m_snake.front();
         int hx = cx(h.x), hy = cy(h.y);
@@ -629,21 +547,13 @@ void Game::drawFood() {
 void Game::drawPowerups() {
     for (auto& pu : m_powerups) {
         if (!pu.active) continue;
-        WORD col = PU_COLORS[pu.type];
-        // Blink when about to expire (after 200 ticks they vanish anyway)
+        if (pu.blinkTimer >= 220) { pu.active = false; continue; }
         bool show = (pu.blinkTimer < 180) || (pu.blinkTimer / 3 % 2 == 0);
-        if (pu.blinkTimer >= 220) {
-            // Expire powerup
-            pu.active = false;
-            continue;
-        }
         if (show) {
-            char g = PU_GLYPHS[pu.type];
-            Console::get().put(cx(pu.pos.x),   cy(pu.pos.y), '[', col);
-            Console::get().put(cx(pu.pos.x)+1, cy(pu.pos.y), g,   col);
+            Console::get().put(cx(pu.pos.x),   cy(pu.pos.y), '[',             PU_COLORS[pu.type]);
+            Console::get().put(cx(pu.pos.x)+1, cy(pu.pos.y), PU_GLYPHS[pu.type], PU_COLORS[pu.type]);
         }
     }
-    // Remove expired
     m_powerups.erase(
         std::remove_if(m_powerups.begin(), m_powerups.end(),
                        [](const PowerUp& p){ return !p.active; }),
@@ -652,9 +562,9 @@ void Game::drawPowerups() {
 
 void Game::drawEnemies() {
     for (auto& e : m_enemies) {
-        WORD col = e.frozen ? C_CYAN : e.color;
-        char g1 = e.frozen ? '[' : '<';
-        char g2 = e.frozen ? ']' : '>';
+        WORD col  = e.frozen ? C_CYAN : e.color;
+        char g1   = e.frozen ? '[' : '<';
+        char g2   = e.frozen ? ']' : '>';
         drawCell(e.pos.x, e.pos.y, g1, g2, col);
     }
 }
@@ -662,38 +572,26 @@ void Game::drawEnemies() {
 void Game::drawHUD() {
     auto& con = Console::get();
     int hudY = BOARD_H + 3;
-
-    // Clear HUD line
     con.fill(0, hudY,   CONSOLE_COLS, 1, ' ', C_BLACK);
     con.fill(0, hudY+1, CONSOLE_COLS, 1, ' ', C_BLACK);
 
-    // Score
-    con.print(1, hudY, "SCORE:", C_GRAY);
-    con.print(8, hudY, std::to_string(m_score), C_YELLOW);
-
-    // Best
-    int best = Leaderboard::get().globalBest();
+    con.print(1,  hudY, "SCORE:", C_GRAY);
+    con.print(8,  hudY, std::to_string(m_score), C_YELLOW);
     con.print(18, hudY, "BEST:", C_GRAY);
-    con.print(24, hudY, std::to_string(best), C_GREEN);
-
-    // Level
+    con.print(24, hudY, std::to_string(Leaderboard::get().globalBest()), C_GREEN);
     con.print(34, hudY, "LVL:", C_GRAY);
     con.print(39, hudY, std::to_string(m_level), C_CYAN);
+    con.print(46, hudY, "LEN:", C_GRAY);
+    con.print(51, hudY, std::to_string((int)m_snake.size()), C_WHITE);
 
-    // Combo
     if (m_combo > 1) {
         std::string cs = "COMBO x" + std::to_string(m_combo) + "!";
         WORD cc = (m_comboTimer / 3 % 2 == 0) ? C_YELLOW : C_WHITE;
-        con.print(46, hudY, cs, cc);
+        con.print(60, hudY, cs, cc);
     }
 
-    // Length
-    con.print(62, hudY, "LEN:", C_GRAY);
-    con.print(67, hudY, std::to_string((int)m_snake.size()), C_WHITE);
-
-    // Active effects bar
     int ex = 1;
-    auto printEffect = [&](const char* name, int timer, WORD col) {
+    auto printFx = [&](const char* name, int timer, WORD col) {
         if (timer <= 0) return;
         std::string s = std::string("[") + name;
         if (timer < 20) s += "!";
@@ -701,35 +599,30 @@ void Game::drawHUD() {
         con.print(ex, hudY+1, s, col);
         ex += (int)s.size() + 1;
     };
-    printEffect("SPD",   m_fx.speedBoost,  C_YELLOW);
-    printEffect("SLO",   m_fx.slowMo,      C_CYAN);
-    printEffect("SHD",   m_fx.shield,      C_BLUE);
-    printEffect("GHO",   m_fx.ghost,       C_MAGENTA);
-    printEffect("MAG",   m_fx.magnet,      C_GREEN);
-    printEffect("FRZ",   m_fx.freeze,      C_DARK_CYAN);
-    printEffect("2XP",   m_fx.doubleScore, C_YELLOW);
-    printEffect("STAR",  m_fx.star,        C_WHITE);
+    printFx("SPD",  m_fx.speedBoost,  C_YELLOW);
+    printFx("SLO",  m_fx.slowMo,      C_CYAN);
+    printFx("SHD",  m_fx.shield,      C_BLUE);
+    printFx("GHO",  m_fx.ghost,       C_MAGENTA);
+    printFx("MAG",  m_fx.magnet,      C_GREEN);
+    printFx("FRZ",  m_fx.freeze,      C_DARK_CYAN);
+    printFx("2XP",  m_fx.doubleScore, C_YELLOW);
+    printFx("STAR", m_fx.star,        C_WHITE);
 
-    // Controls hint
-    con.print(CONSOLE_COLS - 36, hudY+1, "[WASD/Arrows] [P]ause [Q]uit", C_DARK_GRAY);
+    con.print(CONSOLE_COLS-30, hudY+1, "[WASD] [P]ause [Q]uit", C_DARK_GRAY);
 }
 
 void Game::drawPauseOverlay() {
     auto& con = Console::get();
     int px = BOARD_W - 4, py = BOARD_H/2 - 2;
-    con.fill(px, py, 16, 5, ' ', C_BG_BLUE | C_WHITE);
-    con.print(px+3, py+1, "  *** PAUSED ***  ", C_YELLOW | C_BG_BLUE);
-    con.print(px+2, py+2, " P: Resume  Q: Quit ", C_WHITE | C_BG_BLUE);
+    con.fill(px, py, 18, 4, ' ', C_BG_BLUE);
+    con.print(px+2, py+1, "*** PAUSED ***",  C_YELLOW);
+    con.print(px+1, py+2, "P:Resume  Q:Quit", C_WHITE);
 }
 
-// ─────────────────────────────────────────────────────────────
-//  Full draw pass
-// ─────────────────────────────────────────────────────────────
 void Game::draw() {
     auto& con = Console::get();
     con.clear();
     con.tickShake();
-
     drawBoard();
     drawFood();
     drawPowerups();
@@ -737,40 +630,32 @@ void Game::draw() {
     drawSnake();
     drawHUD();
     Particles::get().draw();
-
     if (m_paused) drawPauseOverlay();
-
     con.flush();
 }
 
-// ─────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------
 //  Main game loop
-// ─────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------
 void Game::run() {
     DWORD lastTick = GetTickCount();
-
     while (!m_gameOver) {
         handleInput();
         if (m_gameOver) break;
-
         DWORD now = GetTickCount();
-        int spd = effectiveSpeed();
-
-        if (!m_paused && (int)(now - lastTick) >= spd) {
+        if (!m_paused && (int)(now - lastTick) >= effectiveSpeed()) {
             lastTick = now;
             update();
             Particles::get().update();
         }
-
         draw();
-        Sleep(8); // ~120fps render loop
+        Sleep(8);
     }
-
-    // Death animation – keep rendering particles for a moment
+    // Death animation
     for (int i = 0; i < 40 && !_kbhit(); i++) {
         Particles::get().update();
-        draw();
         Console::get().tickShake();
+        draw();
         Sleep(30);
     }
 }
