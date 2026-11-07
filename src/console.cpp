@@ -5,7 +5,6 @@ Console& Console::get() { static Console inst; return inst; }
 
 void Console::init() {
     m_hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-    // Set buffer then window size
     COORD bufSize = { (SHORT)m_cols, (SHORT)m_rows };
     SetConsoleScreenBufferSize(m_hOut, bufSize);
     SMALL_RECT wr = { 0, 0, (SHORT)(m_cols-1), (SHORT)(m_rows-1) };

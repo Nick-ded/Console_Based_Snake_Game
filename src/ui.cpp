@@ -11,11 +11,7 @@
 
 UI& UI::get() { static UI inst; return inst; }
 
-// ---------------------------------------------------------------
-//  Box helper
-// ---------------------------------------------------------------
-void UI::drawBox(int x, int y, int w, int h,
-                 const std::string& title, WORD bc) {
+void UI::drawBox(int x, int y, int w, int h, const std::string& title, WORD bc) {
     auto& con = Console::get();
     con.put(x, y, '+', bc);
     for (int i = 1; i < w-1; i++) con.put(x+i, y, '-', bc);
@@ -34,11 +30,7 @@ void UI::drawBox(int x, int y, int w, int h,
     }
 }
 
-// ---------------------------------------------------------------
-//  Menu selector
-// ---------------------------------------------------------------
-int UI::menuSelect(int x, int y,
-                   const std::vector<std::string>& items,
+int UI::menuSelect(int x, int y, const std::vector<std::string>& items,
                    WORD normal, WORD selected) {
     auto& con = Console::get();
     int sel = 0, n = (int)items.size();
@@ -50,9 +42,9 @@ int UI::menuSelect(int x, int y,
         con.flush();
         int key = _getch();
         if (key == 0 || key == 0xE0) key = _getch();
-        if (key == 72 || tolower(key) == 'w') { sel = (sel-1+n)%n; Sound::get().play(SND_MENU_MOVE); }
-        else if (key == 80 || tolower(key) == 's') { sel = (sel+1)%n; Sound::get().play(SND_MENU_MOVE); }
-        else if (key == 13 || key == ' ') { Sound::get().play(SND_MENU_SELECT); return sel; }
+        if      (key == 72 || tolower(key) == 'w') { sel = (sel-1+n)%n; Sound::get().play(SND_MENU_MOVE); }
+        else if (key == 80 || tolower(key) == 's') { sel = (sel+1)%n;   Sound::get().play(SND_MENU_MOVE); }
+        else if (key == 13 || key == ' ')           { Sound::get().play(SND_MENU_SELECT); return sel; }
         else if (key == 27) return -1;
         else if (key >= '1' && key <= '9') {
             int idx = key - '1';
@@ -61,9 +53,6 @@ int UI::menuSelect(int x, int y,
     }
 }
 
-// ---------------------------------------------------------------
-//  ASCII title
-// ---------------------------------------------------------------
 void UI::drawTitle(int offsetY) {
     auto& con = Console::get();
     static const char* T[] = {
@@ -73,21 +62,17 @@ void UI::drawTitle(int offsetY) {
         "     #  #  # #  #   #  #  #   #    ",
         " #####  #   ##  #   #  #   #  #####",
     };
-    static const WORD tc[] = {C_GREEN,C_CYAN,C_YELLOW,C_CYAN,C_GREEN};
+    static const WORD tc[] = {C_GREEN, C_CYAN, C_YELLOW, C_CYAN, C_GREEN};
     int sx = 8, sy = 2 + offsetY;
     for (int i = 0; i < 5; i++)
         con.print(sx, sy+i, T[i], tc[i]);
     con.print(sx+8, sy+6, "~ ULTRA EDITION ~", C_DARK_YELLOW);
 }
 
-// ---------------------------------------------------------------
-//  Splash
-// ---------------------------------------------------------------
 void UI::showSplash() {
     auto& con = Console::get();
     con.clear(); con.flush();
 
-    // Slide-in animation
     for (int frame = -18; frame <= 0; frame++) {
         con.clear();
         drawTitle(frame);
@@ -95,7 +80,6 @@ void UI::showSplash() {
         Sleep(18);
     }
 
-    // Particle burst
     for (int i = 0; i < 20; i++) {
         float x = (float)(5 + rand() % 40);
         float y = (float)(rand() % 8);
@@ -111,10 +95,9 @@ void UI::showSplash() {
     }
     Particles::get().clear();
 
-    // Idle loop with blinking prompt
     int best = Leaderboard::get().globalBest();
     if (best > 0)
-        Console::get().print(28, 11, "Best Score: " + std::to_string(best), C_YELLOW);
+        con.print(28, 11, "Best Score: " + std::to_string(best), C_YELLOW);
 
     int frame = 0;
     while (!_kbhit()) {
@@ -122,7 +105,6 @@ void UI::showSplash() {
         WORD col = (frame/8 % 2 == 0) ? C_WHITE : C_DARK_GRAY;
         con.print(24, 14, "   Press any key to start...   ", col);
 
-        // Idle snake crawl
         int sx = (frame * 2) % (CONSOLE_COLS + 12) - 6;
         for (int i = 0; i < 8; i++) {
             int px = sx - i*2;
@@ -137,9 +119,6 @@ void UI::showSplash() {
     _getch();
 }
 
-// ---------------------------------------------------------------
-//  Main menu
-// ---------------------------------------------------------------
 GameMode UI::showMainMenu() {
     auto& con = Console::get();
     while (true) {
@@ -158,14 +137,12 @@ GameMode UI::showMainMenu() {
             "8. Quit"
         };
 
-        // Right panel: mode descriptions
         con.print(48, 13, "MODE INFO", C_YELLOW);
         for (int i = 0; i < MODE_COUNT; i++) {
             con.print(48, 15 + i*2, std::string(MODE_NAMES[i]) + ":", C_CYAN);
             con.print(50, 16 + i*2, MODE_DESC[i], C_GRAY);
         }
 
-        // Top scores
         con.print(48, 24, "TOP SCORES:", C_YELLOW);
         int row = 25;
         for (auto& e : Leaderboard::get().entries()) {
@@ -189,19 +166,16 @@ GameMode UI::showMainMenu() {
     }
 }
 
-// ---------------------------------------------------------------
-//  Leaderboard screen
-// ---------------------------------------------------------------
 void UI::showLeaderboard() {
     auto& con = Console::get();
     con.clear();
     drawBox(8, 1, 82, 28, " LEADERBOARD ", C_YELLOW);
 
-    con.print(12, 3,  "RANK", C_YELLOW);
-    con.print(20, 3,  "NAME", C_YELLOW);
-    con.print(30, 3,  "SCORE", C_YELLOW);
-    con.print(42, 3,  "MODE", C_YELLOW);
-    con.print(54, 3,  "LEVEL", C_YELLOW);
+    con.print(12, 3, "RANK",  C_YELLOW);
+    con.print(20, 3, "NAME",  C_YELLOW);
+    con.print(30, 3, "SCORE", C_YELLOW);
+    con.print(42, 3, "MODE",  C_YELLOW);
+    con.print(54, 3, "LEVEL", C_YELLOW);
     con.fill(12, 4, 64, 1, '-', C_DARK_GRAY);
 
     auto& entries = Leaderboard::get().entries();
@@ -216,8 +190,7 @@ void UI::showLeaderboard() {
             con.print(30, 5+i*2, std::to_string(e.score), col);
             con.print(42, 5+i*2, MODE_NAMES[e.mode], col);
             con.print(54, 5+i*2, std::to_string(e.level), col);
-            int barLen = (std::min)(20, e.score/50);
-            con.print(62, 5+i*2, std::string(barLen, '|'), C_GREEN);
+            con.print(62, 5+i*2, std::string((std::min)(20, e.score/50), '|'), C_GREEN);
         }
     }
     con.print(30, 27, "Press any key to return...", C_GRAY);
@@ -226,9 +199,6 @@ void UI::showLeaderboard() {
     _getch();
 }
 
-// ---------------------------------------------------------------
-//  Controls screen
-// ---------------------------------------------------------------
 void UI::showControls() {
     auto& con = Console::get();
     con.clear();
@@ -262,9 +232,6 @@ void UI::showControls() {
     _getch();
 }
 
-// ---------------------------------------------------------------
-//  Name prompt
-// ---------------------------------------------------------------
 std::string UI::promptName() {
     auto& con = Console::get();
     int bx = 32, by = 16;
@@ -292,13 +259,9 @@ std::string UI::promptName() {
     return name.empty() ? "AAA" : name;
 }
 
-// ---------------------------------------------------------------
-//  Game over screen
-// ---------------------------------------------------------------
 void UI::showGameOver(int score, GameMode mode, int level) {
     auto& con = Console::get();
 
-    // Flash
     for (int f = 0; f < 6; f++) {
         con.clear();
         if (f % 2 == 0) con.fill(0, 0, CONSOLE_COLS, CONSOLE_ROWS, ' ', C_BG_RED);
@@ -328,8 +291,8 @@ void UI::showGameOver(int score, GameMode mode, int level) {
     con.print(26, 15, "World Best:    ", C_WHITE);
     con.print(42, 15, std::to_string(Leaderboard::get().globalBest()), C_YELLOW);
 
-    bool newBest = score >= Leaderboard::get().globalBest();
-    if (newBest) con.print(26, 17, "*** NEW HIGH SCORE! ***", C_YELLOW);
+    if (score >= Leaderboard::get().globalBest())
+        con.print(26, 17, "*** NEW HIGH SCORE! ***", C_YELLOW);
 
     con.print(26, 19, "[R] Play Again", C_GREEN);
     con.print(26, 20, "[M] Main Menu",  C_CYAN);

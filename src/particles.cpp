@@ -14,8 +14,8 @@ void Particles::burst(float cx, float cy, int count, Color col, char glyph) {
         float speed = 0.3f + (rand() % 100) / 200.f;
         Particle p;
         p.x = cx; p.y = cy;
-        p.vx = cosf(angle) * speed;
-        p.vy = sinf(angle) * speed * 0.5f;
+        p.vx    = cosf(angle) * speed;
+        p.vy    = sinf(angle) * speed * 0.5f;
         p.life  = 8 + rand() % 8;
         p.glyph = glyph;
         p.color = col;
@@ -31,8 +31,8 @@ void Particles::explosion(float cx, float cy, int count) {
         float speed = 0.5f + (rand() % 100) / 100.f;
         Particle p;
         p.x = cx; p.y = cy;
-        p.vx = cosf(angle) * speed;
-        p.vy = sinf(angle) * speed * 0.5f;
+        p.vx    = cosf(angle) * speed;
+        p.vy    = sinf(angle) * speed * 0.5f;
         p.life  = 10 + rand() % 10;
         p.glyph = glyphs[rand() % 5];
         p.color = cols[rand() % 5];
@@ -42,9 +42,9 @@ void Particles::explosion(float cx, float cy, int count) {
 
 void Particles::trail(float x, float y, Color col) {
     Particle p;
-    p.x = x; p.y = y;
-    p.vx   = ((rand() % 20) - 10) / 100.f;
-    p.vy   = ((rand() % 10) - 5)  / 100.f;
+    p.x     = x; p.y = y;
+    p.vx    = ((rand() % 20) - 10) / 100.f;
+    p.vy    = ((rand() % 10) - 5)  / 100.f;
     p.life  = 3 + rand() % 4;
     p.glyph = '.';
     p.color = col;

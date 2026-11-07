@@ -31,17 +31,17 @@ DWORD WINAPI Sound::threadProc(LPVOID param) {
     static const BeepNote PORTAL[]    = {{300,40},{600,40},{900,60}};
 
     switch (ev) {
-        case SND_EAT:         playNotes(EAT,       2); break;
-        case SND_POWERUP:     playNotes(POWERUP,   4); break;
-        case SND_DEATH:       playNotes(DEATH,      4); break;
-        case SND_LEVEL_UP:    playNotes(LEVELUP,    5); break;
-        case SND_SHIELD_HIT:  playNotes(SHIELDHIT,  2); break;
-        case SND_BOMB:        playNotes(BOMB,       3); break;
-        case SND_STAR:        playNotes(STAR,       4); break;
-        case SND_MENU_MOVE:   playNotes(MMOVE,      1); break;
-        case SND_MENU_SELECT: playNotes(MSEL,       2); break;
-        case SND_COMBO:       playNotes(COMBO,      4); break;
-        case SND_PORTAL:      playNotes(PORTAL,     3); break;
+        case SND_EAT:         playNotes(EAT,        2); break;
+        case SND_POWERUP:     playNotes(POWERUP,    4); break;
+        case SND_DEATH:       playNotes(DEATH,       4); break;
+        case SND_LEVEL_UP:    playNotes(LEVELUP,     5); break;
+        case SND_SHIELD_HIT:  playNotes(SHIELDHIT,   2); break;
+        case SND_BOMB:        playNotes(BOMB,        3); break;
+        case SND_STAR:        playNotes(STAR,        4); break;
+        case SND_MENU_MOVE:   playNotes(MMOVE,       1); break;
+        case SND_MENU_SELECT: playNotes(MSEL,        2); break;
+        case SND_COMBO:       playNotes(COMBO,       4); break;
+        case SND_PORTAL:      playNotes(PORTAL,      3); break;
     }
     return 0;
 }

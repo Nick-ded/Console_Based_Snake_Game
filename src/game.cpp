@@ -14,9 +14,6 @@
 
 Game& Game::get() { static Game inst; return inst; }
 
-// ---------------------------------------------------------------
-//  Helpers
-// ---------------------------------------------------------------
 void Game::drawCell(int gx, int gy, char ch1, char ch2, WORD color) {
     Console::get().put(cx(gx),   cy(gy), ch1, color);
     Console::get().put(cx(gx)+1, cy(gy), ch2, color);
@@ -25,8 +22,8 @@ void Game::drawCell(int gx, int gy, char ch1, char ch2, WORD color) {
 bool Game::isFree(const Point& p) const {
     if (p.x < 0 || p.x >= BOARD_W || p.y < 0 || p.y >= BOARD_H) return false;
     if (Maze::get().isWall(p)) return false;
-    for (auto& s : m_snake) if (s == p) return false;
-    for (auto& f : m_food)  if (f == p) return false;
+    for (auto& s : m_snake)   if (s == p) return false;
+    for (auto& f : m_food)    if (f == p) return false;
     for (auto& pu : m_powerups) if (pu.pos == p) return false;
     return true;
 }
@@ -86,9 +83,6 @@ int Game::effectiveSpeed() const {
     return s;
 }
 
-// ---------------------------------------------------------------
-//  Init
-// ---------------------------------------------------------------
 void Game::init(GameMode mode) {
     m_mode = mode;
     m_snake.clear(); m_food.clear();
@@ -122,9 +116,6 @@ void Game::init(GameMode mode) {
     if (mode == MODE_CHAOS) spawnFood();
 }
 
-// ---------------------------------------------------------------
-//  Spawn
-// ---------------------------------------------------------------
 void Game::spawnFood() {
     if ((int)m_food.size() >= 3) return;
     m_food.push_back(randomFreeCell());
@@ -151,9 +142,6 @@ void Game::spawnEnemy() {
     m_enemies.push_back(e);
 }
 
-// ---------------------------------------------------------------
-//  Collect events
-// ---------------------------------------------------------------
 void Game::collectFood(int idx) {
     Point fp = m_food[idx];
     m_food.erase(m_food.begin() + idx);
@@ -196,13 +184,13 @@ void Game::collectPowerup(int idx) {
         case PU_SPEED_BOOST:  m_fx.speedBoost  = dur; break;
         case PU_SLOW_MO:      m_fx.slowMo      = dur; break;
         case PU_SHIELD:       m_fx.shield = dur; m_fx.hasShield = true; break;
-        case PU_GHOST:        m_fx.ghost       = dur; break;
-        case PU_MAGNET:       m_fx.magnet      = dur; break;
+        case PU_GHOST:        m_fx.ghost        = dur; break;
+        case PU_MAGNET:       m_fx.magnet       = dur; break;
         case PU_FREEZE:
             m_fx.freeze = dur;
             for (auto& e : m_enemies) { e.frozen = true; e.frozenTimer = dur; }
             break;
-        case PU_DOUBLE_SCORE: m_fx.doubleScore = dur; break;
+        case PU_DOUBLE_SCORE: m_fx.doubleScore  = dur; break;
         case PU_STAR:         m_fx.star = dur; Sound::get().play(SND_STAR); break;
         case PU_SHRINK:
             for (int i = 0; i < 4 && (int)m_snake.size() > 3; i++)
@@ -259,13 +247,10 @@ void Game::triggerDeath() {
         Particles::get().burst((float)s.x, (float)s.y, 3, C_RED, 'X');
 }
 
-// ---------------------------------------------------------------
-//  Update sub-systems
-// ---------------------------------------------------------------
 void Game::updateEffects() {
     auto tick = [](int& v){ if (v > 0) v--; };
-    tick(m_fx.speedBoost); tick(m_fx.slowMo);  tick(m_fx.shield);
-    tick(m_fx.ghost);      tick(m_fx.magnet);  tick(m_fx.freeze);
+    tick(m_fx.speedBoost); tick(m_fx.slowMo);   tick(m_fx.shield);
+    tick(m_fx.ghost);      tick(m_fx.magnet);   tick(m_fx.freeze);
     tick(m_fx.doubleScore);tick(m_fx.star);
     if (m_fx.shield == 0) m_fx.hasShield = false;
 }
@@ -323,10 +308,10 @@ void Game::triggerChaosEvent() {
     int ev = rand() % 8;
     switch (ev) {
         case 0:
-            if (m_dir == DIR_UP)         m_dir = DIR_DOWN;
-            else if (m_dir == DIR_DOWN)  m_dir = DIR_UP;
-            else if (m_dir == DIR_LEFT)  m_dir = DIR_RIGHT;
-            else                         m_dir = DIR_LEFT;
+            if (m_dir == DIR_UP)        m_dir = DIR_DOWN;
+            else if (m_dir == DIR_DOWN) m_dir = DIR_UP;
+            else if (m_dir == DIR_LEFT) m_dir = DIR_RIGHT;
+            else                        m_dir = DIR_LEFT;
             m_nextDir = m_dir;
             Particles::get().text((float)BOARD_W/2, 2, "REVERSED!", C_RED);
             break;
@@ -364,9 +349,6 @@ void Game::triggerChaosEvent() {
     }
 }
 
-// ---------------------------------------------------------------
-//  Input
-// ---------------------------------------------------------------
 void Game::handleInput() {
     if (!_kbhit()) return;
     int key = _getch();
@@ -390,9 +372,6 @@ void Game::handleInput() {
     }
 }
 
-// ---------------------------------------------------------------
-//  Main update
-// ---------------------------------------------------------------
 void Game::update() {
     m_dir = m_nextDir;
     updateEffects();
@@ -432,10 +411,10 @@ void Game::update() {
             m_fx.hasShield = false; m_fx.shield = 0;
             Sound::get().play(SND_SHIELD_HIT);
             Console::get().shake(5, 2);
-            if (m_dir == DIR_UP)         m_nextDir = DIR_DOWN;
-            else if (m_dir == DIR_DOWN)  m_nextDir = DIR_UP;
-            else if (m_dir == DIR_LEFT)  m_nextDir = DIR_RIGHT;
-            else                         m_nextDir = DIR_LEFT;
+            if (m_dir == DIR_UP)        m_nextDir = DIR_DOWN;
+            else if (m_dir == DIR_DOWN) m_nextDir = DIR_UP;
+            else if (m_dir == DIR_LEFT) m_nextDir = DIR_RIGHT;
+            else                        m_nextDir = DIR_LEFT;
             return;
         }
         triggerDeath(); return;
@@ -467,23 +446,20 @@ void Game::update() {
                                (float)m_snake.back().y, C_YELLOW);
 }
 
-// ---------------------------------------------------------------
-//  Draw
-// ---------------------------------------------------------------
 void Game::drawBoard() {
     auto& con = Console::get();
     for (int x = 0; x <= BOARD_W*2+1; x++) {
-        con.put(x, 1,          '-', C_DARK_CYAN);
-        con.put(x, BOARD_H+2,  '-', C_DARK_CYAN);
+        con.put(x, 1,         '-', C_DARK_CYAN);
+        con.put(x, BOARD_H+2, '-', C_DARK_CYAN);
     }
     for (int y = 1; y <= BOARD_H+2; y++) {
-        con.put(0,            y, '|', C_DARK_CYAN);
-        con.put(BOARD_W*2+1,  y, '|', C_DARK_CYAN);
+        con.put(0,           y, '|', C_DARK_CYAN);
+        con.put(BOARD_W*2+1, y, '|', C_DARK_CYAN);
     }
-    con.put(0,           1,          '+', C_CYAN);
-    con.put(BOARD_W*2+1, 1,          '+', C_CYAN);
-    con.put(0,           BOARD_H+2,  '+', C_CYAN);
-    con.put(BOARD_W*2+1, BOARD_H+2,  '+', C_CYAN);
+    con.put(0,           1,         '+', C_CYAN);
+    con.put(BOARD_W*2+1, 1,         '+', C_CYAN);
+    con.put(0,           BOARD_H+2, '+', C_CYAN);
+    con.put(BOARD_W*2+1, BOARD_H+2, '+', C_CYAN);
 
     std::string badge = std::string(" ") + MODE_NAMES[m_mode] + " ";
     con.print(2, 1, badge, C_YELLOW);
@@ -550,7 +526,7 @@ void Game::drawPowerups() {
         if (pu.blinkTimer >= 220) { pu.active = false; continue; }
         bool show = (pu.blinkTimer < 180) || (pu.blinkTimer / 3 % 2 == 0);
         if (show) {
-            Console::get().put(cx(pu.pos.x),   cy(pu.pos.y), '[',             PU_COLORS[pu.type]);
+            Console::get().put(cx(pu.pos.x),   cy(pu.pos.y), '[',              PU_COLORS[pu.type]);
             Console::get().put(cx(pu.pos.x)+1, cy(pu.pos.y), PU_GLYPHS[pu.type], PU_COLORS[pu.type]);
         }
     }
@@ -562,9 +538,9 @@ void Game::drawPowerups() {
 
 void Game::drawEnemies() {
     for (auto& e : m_enemies) {
-        WORD col  = e.frozen ? C_CYAN : e.color;
-        char g1   = e.frozen ? '[' : '<';
-        char g2   = e.frozen ? ']' : '>';
+        WORD col = e.frozen ? C_CYAN : e.color;
+        char g1  = e.frozen ? '[' : '<';
+        char g2  = e.frozen ? ']' : '>';
         drawCell(e.pos.x, e.pos.y, g1, g2, col);
     }
 }
@@ -615,7 +591,7 @@ void Game::drawPauseOverlay() {
     auto& con = Console::get();
     int px = BOARD_W - 4, py = BOARD_H/2 - 2;
     con.fill(px, py, 18, 4, ' ', C_BG_BLUE);
-    con.print(px+2, py+1, "*** PAUSED ***",  C_YELLOW);
+    con.print(px+2, py+1, "*** PAUSED ***",   C_YELLOW);
     con.print(px+1, py+2, "P:Resume  Q:Quit", C_WHITE);
 }
 
@@ -634,9 +610,6 @@ void Game::draw() {
     con.flush();
 }
 
-// ---------------------------------------------------------------
-//  Main game loop
-// ---------------------------------------------------------------
 void Game::run() {
     DWORD lastTick = GetTickCount();
     while (!m_gameOver) {
@@ -651,7 +624,6 @@ void Game::run() {
         draw();
         Sleep(8);
     }
-    // Death animation
     for (int i = 0; i < 40 && !_kbhit(); i++) {
         Particles::get().update();
         Console::get().tickShake();

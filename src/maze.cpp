@@ -58,7 +58,6 @@ void Maze::generate(int seed) {
 
     dfs(1, 1);
 
-    // Clear center area for snake start
     int mx = BOARD_W / 2, my = BOARD_H / 2;
     for (int dx = -2; dx <= 2; dx++)
         for (int dy = -2; dy <= 2; dy++)

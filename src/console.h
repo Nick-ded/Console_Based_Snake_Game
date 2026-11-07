@@ -30,8 +30,8 @@ private:
     int    m_rows = CONSOLE_ROWS;
     std::vector<Cell> m_back;
     std::vector<Cell> m_front;
-    int  m_shakeTicks    = 0;
-    int  m_shakeIntensity= 1;
+    int  m_shakeTicks     = 0;
+    int  m_shakeIntensity = 1;
     int  m_shakeX = 0, m_shakeY = 0;
     void rawPut(int x, int y, char ch, WORD color);
 };

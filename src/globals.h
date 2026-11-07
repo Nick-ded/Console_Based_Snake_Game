@@ -5,13 +5,11 @@
 #include <deque>
 #include <functional>
 
-// Board dimensions
 constexpr int BOARD_W      = 40;
 constexpr int BOARD_H      = 22;
 constexpr int CONSOLE_COLS = 100;
 constexpr int CONSOLE_ROWS = 34;
 
-// Windows console color palette indices
 enum Color : WORD {
     C_BLACK        = 0x00,
     C_DARK_BLUE    = 0x01,
